@@ -1,0 +1,81 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Fourier Transform Calculator</title>
+  <style>
+    body { font-family: Arial, sans-serif; text-align: center; margin-top: 30px; }
+    canvas { border: 1px solid #000; margin-top: 20px; }
+    input { margin: 5px; width: 150px; }
+    button { margin: 10px; padding: 5px 15px; }
+  </style>
+</head>
+<body>
+
+<h2>Fourier Transform Calculator (Discrete)</h2>
+<p>Enter sequence values separated by commas (e.g., 1,2,3,4):</p>
+<input type="text" id="sequence" value="1,2,3,4">
+<br>
+<button id="calcBtn">Calculate Fourier Transform</button>
+
+<canvas id="canvas" width="800" height="500"></canvas>
+
+<script>
+function dft(signal) {
+  let N = signal.length;
+  let real = new Array(N).fill(0);
+  let imag = new Array(N).fill(0);
+
+  for (let k = 0; k < N; k++) {
+    for (let n = 0; n < N; n++) {
+      let angle = (-2 * Math.PI * k * n) / N;
+      real[k] += signal[n] * Math.cos(angle);
+      imag[k] += signal[n] * Math.sin(angle);
+    }
+  }
+
+  let magnitude = real.map((re, i) => Math.sqrt(re * re + imag[i] * imag[i]));
+  return { real, imag, magnitude };
+}
+
+function calculateFourier() {
+  const canvas = document.getElementById('canvas');
+  const ctx = canvas.getContext('2d');
+  ctx.clearRect(0, 0, canvas.width, canvas.height);
+
+  let input = document.getElementById('sequence').value.split(',').map(Number);
+  let { real, imag, magnitude } = dft(input);
+
+  ctx.fillStyle = 'black';
+  ctx.font = '18px Arial';
+  ctx.fillText(`Fourier Transform of [${input.join(', ')}]`, 50, 40);
+
+  ctx.fillText("k", 50, 80);
+  ctx.fillText("Real", 150, 80);
+  ctx.fillText("Imag", 300, 80);
+  ctx.fillText("Magnitude", 450, 80);
+
+  for (let k = 0; k < input.length; k++) {
+    ctx.fillText(`${k}`, 50, 120 + k * 30);
+    ctx.fillText(real[k].toFixed(2), 150, 120 + k * 30);
+    ctx.fillText(imag[k].toFixed(2), 300, 120 + k * 30);
+    ctx.fillText(magnitude[k].toFixed(2), 450, 120 + k * 30);
+  }
+
+  // Draw bar graph for magnitude
+  ctx.fillText("Magnitude Spectrum:", 50, 120 + input.length * 30 + 40);
+  let baseY = 120 + input.length * 30 + 80;
+  let scale = 50;
+  for (let k = 0; k < magnitude.length; k++) {
+    let barHeight = magnitude[k] * scale / Math.max(...magnitude);
+    ctx.fillRect(100 + k * 40, baseY - barHeight, 20, barHeight);
+    ctx.fillText(k, 100 + k * 40, baseY + 20);
+  }
+}
+
+document.getElementById('calcBtn').addEventListener('click', calculateFourier);
+</script>
+
+</body>
+</html>
