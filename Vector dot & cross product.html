@@ -1,0 +1,73 @@
+<!DOCTYPE html>
+<html>
+<head>
+  <title>Vector Dot & Cross Product Calculator</title>
+  <style>
+    body { font-family: Arial, sans-serif; text-align: center; }
+    canvas { border: 1px solid black; margin-top: 10px; }
+  </style>
+</head>
+<body>
+  <h2>Vector Algebra: Dot Product & Cross Product</h2>
+  <p>Enter vectors A and B (comma-separated, 3 components):</p>
+  
+  <input id="vectorA" value="1,2,3">
+  <input id="vectorB" value="4,5,6">
+  <button onclick="calculate()">Calculate</button>
+  
+  <h3>Formulas:</h3>
+  <p><b>Dot Product:</b> A · B = A<sub>x</sub>B<sub>x</sub> + A<sub>y</sub>B<sub>y</sub> + A<sub>z</sub>B<sub>z</sub></p>
+  <p><b>Cross Product:</b> A × B = [ (A<sub>y</sub>B<sub>z</sub> - A<sub>z</sub>B<sub>y</sub>), (A<sub>z</sub>B<sub>x</sub> - A<sub>x</sub>B<sub>z</sub>), (A<sub>x</sub>B<sub>y</sub> - A<sub>y</sub>B<sub>x</sub>) ]</p>
+
+  <h3>Results:</h3>
+  <p id="dotResult"></p>
+  <p id="crossResult"></p>
+
+  <canvas id="canvas" width="400" height="400"></canvas>
+
+  <script>
+    function calculate() {
+      let A = document.getElementById("vectorA").value.split(",").map(Number);
+      let B = document.getElementById("vectorB").value.split(",").map(Number);
+
+      if (A.length !== 3 || B.length !== 3) {
+        alert("Please enter exactly 3 components for each vector.");
+        return;
+      }
+
+      // Dot Product
+      let dot = A[0]*B[0] + A[1]*B[1] + A[2]*B[2];
+      document.getElementById("dotResult").innerText = `Dot Product: ${dot}`;
+
+      // Cross Product
+      let cross = [
+        A[1]*B[2] - A[2]*B[1],
+        A[2]*B[0] - A[0]*B[2],
+        A[0]*B[1] - A[1]*B[0]
+      ];
+      document.getElementById("crossResult").innerText = `Cross Product: [${cross}]`;
+
+      // Draw vectors A and B in 2D (x,y projection)
+      let canvas = document.getElementById("canvas");
+      let ctx = canvas.getContext("2d");
+      ctx.clearRect(0, 0, canvas.width, canvas.height);
+
+      // Center
+      let originX = canvas.width / 2;
+      let originY = canvas.height / 2;
+
+      function drawVector(v, color) {
+        ctx.beginPath();
+        ctx.moveTo(originX, originY);
+        ctx.lineTo(originX + v[0]*20, originY - v[1]*20);
+        ctx.strokeStyle = color;
+        ctx.lineWidth = 2;
+        ctx.stroke();
+      }
+
+      drawVector(A, "red");
+      drawVector(B, "blue");
+    }
+  </script>
+</body>
+</html>
