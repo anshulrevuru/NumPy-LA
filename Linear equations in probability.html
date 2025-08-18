@@ -1,0 +1,325 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>Linear Equations in Probability: a·x² + b·y + c = 0</title>
+  <style>
+    :root { --pad: 14px; }
+    body { font-family: Arial, sans-serif; margin: 0; padding: var(--pad); color: #111; }
+    h2 { text-align: center; margin-top: 4px; }
+    .wrap { display: grid; grid-template-columns: 380px 1fr; gap: 16px; align-items: start; }
+    .card { border: 1px solid #ddd; border-radius: 12px; padding: var(--pad); box-shadow: 0 2px 10px rgba(0,0,0,.04); }
+    label { display:block; margin: 6px 0 4px; font-weight: 600; }
+    input[type="number"] { width: 120px; padding: 6px 8px; }
+    input[type="range"] { width: 95%; }
+    button { padding: 8px 12px; border-radius: 10px; border: 1px solid #ccc; background: #fafafa; cursor: pointer; margin-right: 6px; }
+    button:hover { background: #f0f0f0; }
+    .row { display:flex; align-items:center; gap:10px; flex-wrap: wrap; }
+    .muted { color:#666; font-size: 12px; }
+    .ok { color: #0a7f2e; font-weight: 700; }
+    .warn { color: #b34700; font-weight: 700; }
+    .err { color: #b00020; font-weight: 700; }
+    .mini { font-size: 12px; }
+    canvas { width: 100%; height: 520px; border: 1px solid #ddd; border-radius: 12px; }
+    code { background:#f7f7f7; padding:2px 6px; border-radius:6px; }
+    ul { margin: 8px 0 0 16px; }
+    .examples button { margin-top: 6px; }
+  </style>
+</head>
+<body>
+  <h2>Linear Equations in Probability — Plot & Compute from <code>a·x² + b·y + c = 0</code></h2>
+  <p class="mini" style="text-align:center">Interpretation: <code>x</code> and <code>y</code> represent probabilities, so they must lie in the unit interval <code>[0,1]</code>. We solve for <code>y</code> given <code>x</code> (or analyze feasibility) using <code>y = -(a·x² + c)/b</code> when <code>b ≠ 0</code>.</p>
+
+  <div class="wrap">
+    <section class="card">
+      <label>Coefficients</label>
+      <div class="row">
+        <div>
+          <label for="a">a</label>
+          <input id="a" type="number" step="0.1" value="-0.8" />
+        </div>
+        <div>
+          <label for="b">b</label>
+          <input id="b" type="number" step="0.1" value="1" />
+        </div>
+        <div>
+          <label for="c">c</label>
+          <input id="c" type="number" step="0.1" value="0.1" />
+        </div>
+      </div>
+
+      <label style="margin-top:10px">Choose x (probability)</label>
+      <input id="xRange" type="range" min="0" max="1" step="0.001" value="0.5" />
+      <div class="row mini"><span>Current x:</span><code id="xVal">0.500</code></div>
+
+      <div style="margin-top:10px" class="row">
+        <button id="calcBtn">Calculate y for x</button>
+        <button id="plotBtn">Plot feasible curve y(x)</button>
+        <button id="tableBtn">Make table</button>
+      </div>
+
+      <div class="examples">
+        <label style="margin-top:10px">Quick examples (load & plot)</label>
+        <div class="row">
+          <button data-eg='{"a":-1,"b":1,"c":0}'>Eg 1: y = x²</button>
+          <button data-eg='{"a":-0.8,"b":1,"c":0.1}'>Eg 2: y = 0.8x² − 0.1</button>
+          <button data-eg='{"a":0,"b":1,"c":-0.3}'>Eg 3: y = 0.3 (a=0)</button>
+          <button data-eg='{"a":1,"b":0,"c":-0.25}'>Eg 4: b=0 (solve x only)</button>
+        </div>
+      </div>
+
+      <div style="margin-top:10px" class="mini">
+        <b>Notes</b>
+        <ul>
+          <li>If <code>b ≠ 0</code>, <code>y(x) = -(a·x² + c)/b</code>. We only accept points with <code>0 ≤ x ≤ 1</code> and <code>0 ≤ y ≤ 1</code>.</li>
+          <li>If <code>b = 0</code>, then no <code>y</code>-term: you get <code>a·x² + c = 0</code>. We find feasible <code>x</code> roots in <code>[0,1]</code> and any <code>y ∈ [0,1]</code> works.</li>
+          <li>If <code>a = 0</code>, the relation is linear in <code>y</code> only: <code>y = -c/b</code> (constant), checked for feasibility in <code>[0,1]</code>.</li>
+        </ul>
+      </div>
+    </section>
+
+    <section class="card">
+      <canvas id="cnv" width="900" height="520"></canvas>
+      <div id="status" class="mini" style="margin-top:8px"></div>
+    </section>
+  </div>
+
+  <script>
+    const aEl = document.getElementById('a');
+    const bEl = document.getElementById('b');
+    const cEl = document.getElementById('c');
+    const xRange = document.getElementById('xRange');
+    const xVal = document.getElementById('xVal');
+    const calcBtn = document.getElementById('calcBtn');
+    const plotBtn = document.getElementById('plotBtn');
+    const tableBtn = document.getElementById('tableBtn');
+    const cnv = document.getElementById('cnv');
+    const ctx = cnv.getContext('2d');
+    const statusDiv = document.getElementById('status');
+
+    function fmt(n, d=3){ return Number.isFinite(n) ? n.toFixed(d) : String(n); }
+
+    function readCoeffs(){
+      const a = parseFloat(aEl.value);
+      const b = parseFloat(bEl.value);
+      const c = parseFloat(cEl.value);
+      return {a,b,c};
+    }
+
+    function yFrom(a,b,c,x){
+      if (b === 0) return NaN; // no unique y
+      return - (a * x * x + c) / b;
+    }
+
+    function drawAxes(){
+      ctx.clearRect(0,0,cnv.width, cnv.height);
+      const pad = 60; // padding for axes
+      const W = cnv.width, H = cnv.height;
+      // unit square area
+      ctx.fillStyle = '#f8fafc';
+      ctx.fillRect(pad, pad, W-2*pad, H-2*pad);
+      ctx.strokeStyle = '#d1d5db';
+      ctx.strokeRect(pad, pad, W-2*pad, H-2*pad);
+
+      // grid and ticks
+      ctx.strokeStyle = '#e5e7eb';
+      ctx.fillStyle = '#6b7280';
+      ctx.font = '12px Arial';
+      for (let i=0;i<=10;i++){
+        const t = i/10;
+        const x = pad + t*(W-2*pad);
+        const y = pad + (1-t)*(H-2*pad);
+        // vertical grid
+        ctx.beginPath(); ctx.moveTo(x, pad); ctx.lineTo(x, H-pad); ctx.stroke();
+        // horizontal grid
+        ctx.beginPath(); ctx.moveTo(pad, y); ctx.lineTo(W-pad, y); ctx.stroke();
+        // labels
+        ctx.fillText(t.toFixed(1), x-6, H-pad+16);
+        ctx.fillText(t.toFixed(1), pad-30, y+4);
+      }
+      // axis labels
+      ctx.fillStyle = '#111827';
+      ctx.font = '14px Arial';
+      ctx.fillText('x (probability)', W/2-40, H-20);
+      ctx.save();
+      ctx.translate(20, H/2+30); ctx.rotate(-Math.PI/2);
+      ctx.fillText('y (probability)', 0,0);
+      ctx.restore();
+      // title
+      ctx.font = '16px Arial';
+      ctx.fillText('Feasible set inside unit square (0≤x≤1, 0≤y≤1)', pad, 42);
+    }
+
+    function toCanvasXY(x,y){
+      // map [0,1]x[0,1] to canvas square
+      const pad = 60; const W = cnv.width, H = cnv.height;
+      const cx = pad + x*(W-2*pad);
+      const cy = pad + (1-y)*(H-2*pad);
+      return {cx, cy};
+    }
+
+    function plotCurve(){
+      const {a,b,c} = readCoeffs();
+      drawAxes();
+
+      // show formula
+      ctx.fillStyle = '#0f172a';
+      ctx.font = '14px Arial';
+      ctx.fillText(`a·x² + b·y + c = 0  ⇒  y(x) = -(a·x² + c)/b`, 62, 66);
+      ctx.fillText(`a=${fmt(a,2)}, b=${fmt(b,2)}, c=${fmt(c,2)}`, 62, 86);
+
+      // b=0 special: only solve a·x² + c = 0
+      if (b === 0){
+        // draw a line showing that y is free (any y in [0,1]) only at root x positions
+        const roots = [];
+        if (a !== 0){
+          const val = -c / a; // x^2 = -c/a
+          if (val >= 0){
+            const r = Math.sqrt(val);
+            if (r >=0 && r<=1) roots.push(r);
+            if (-r >=0 && -r<=1 && r!==0) roots.push(-r); // negative root in [0,1] only if r=0
+          }
+        } else {
+          // a=0 and b=0 ⇒ c=0 for feasibility; else impossible
+          drawRootsAndStatus(roots, a, b, c, true);
+          return;
+        }
+        drawRootsAndStatus(roots, a, b, c, true);
+        return;
+      }
+
+      // plot feasible y(x) for x in [0,1]
+      const pts = [];
+      let maxMag = 0;
+      for (let i=0;i<=1000;i++){
+        const x = i/1000;
+        const y = yFrom(a,b,c,x);
+        if (Number.isFinite(y) && y>=0 && y<=1){
+          const p = toCanvasXY(x,y);
+          pts.push(p);
+        }
+      }
+
+      // curve
+      ctx.strokeStyle = '#2563eb';
+      ctx.lineWidth = 2;
+      ctx.beginPath();
+      for (let i=0;i<pts.length;i++){
+        const p = pts[i];
+        if (i===0) ctx.moveTo(p.cx, p.cy); else ctx.lineTo(p.cx, p.cy);
+      }
+      ctx.stroke();
+
+      // status
+      if (pts.length === 0){
+        statusDiv.innerHTML = `<span class="err">No feasible (x,y) points found inside [0,1]×[0,1].</span>`;
+      } else {
+        statusDiv.innerHTML = `<span class="ok">Plotted ${pts.length} feasible points.</span>`;
+      }
+
+      // current x marker
+      const x = parseFloat(xRange.value);
+      const y = yFrom(a,b,c,x);
+      drawCurrentMarker(x,y);
+    }
+
+    function drawRootsAndStatus(roots, a,b,c, bIsZero){
+      drawAxes();
+      ctx.fillStyle = '#0f172a';
+      ctx.font = '14px Arial';
+      if (bIsZero){
+        ctx.fillText(`b = 0 ⇒ equation reduces to a·x² + c = 0`, 62, 66);
+      }
+      ctx.fillText(`a=${fmt(a,2)}, b=${fmt(b,2)}, c=${fmt(c,2)}`, 62, 86);
+
+      if (roots.length === 0){
+        statusDiv.innerHTML = `<span class="err">No x in [0,1] satisfies a·x² + c = 0. No feasible points.</span>`;
+        return;
+      }
+
+      // draw vertical bands at each feasible x (any y in [0,1])
+      ctx.fillStyle = 'rgba(16,185,129,0.25)';
+      for (const rx of roots){
+        const p0 = toCanvasXY(rx, 0);
+        const p1 = toCanvasXY(rx, 1);
+        ctx.fillRect(p0.cx-2, p1.cy, 4, p0.cy - p1.cy);
+      }
+      statusDiv.innerHTML = `<span class="ok">b=0 case: feasible for x = ${roots.map(r=>fmt(r,3)).join(', ')} and any y∈[0,1].</span>`;
+
+      // mark roots on axis
+      ctx.fillStyle = '#065f46';
+      ctx.font = '12px Arial';
+      for (const rx of roots){
+        const p = toCanvasXY(rx, 0);
+        ctx.beginPath(); ctx.arc(p.cx, p.cy, 4, 0, Math.PI*2); ctx.fill();
+        ctx.fillText(`x=${fmt(rx,3)}`, p.cx-18, p.cy+16);
+      }
+    }
+
+    function drawCurrentMarker(x,y){
+      const {a,b,c} = readCoeffs();
+      const p = toCanvasXY(Math.min(Math.max(x,0),1), Math.min(Math.max(y,0),1));
+      ctx.fillStyle = '#ef4444';
+      if (Number.isFinite(y)){
+        // draw marker
+        if (y>=0 && y<=1 && x>=0 && x<=1){
+          ctx.beginPath(); ctx.arc(p.cx, p.cy, 5, 0, Math.PI*2); ctx.fill();
+          statusDiv.innerHTML = `<span class="ok">For x=${fmt(x)}, y=-(a·x²+c)/b = ${fmt(y)} (feasible)</span>`;
+        } else {
+          statusDiv.innerHTML = `<span class="warn">For x=${fmt(x)}, computed y=${fmt(y)} is outside [0,1] (not a valid probability).</span>`;
+        }
+      } else {
+        // b=0 ⇒ no unique y
+        statusDiv.innerHTML = `<span class="warn">b = 0 ⇒ y is not determined by the equation. Solve a·x² + c = 0 for x.</span>`;
+      }
+    }
+
+    function calcOnce(){
+      const {a,b,c} = readCoeffs();
+      const x = parseFloat(xRange.value);
+      const y = yFrom(a,b,c,x);
+      plotCurve();
+      drawCurrentMarker(x,y);
+    }
+
+    function makeTable(){
+      const {a,b,c} = readCoeffs();
+      drawAxes();
+      ctx.fillStyle = '#0f172a'; ctx.font = '14px Arial';
+      ctx.fillText('Sample table for x in {0.00, 0.10, …, 1.00}', 62, 66);
+      ctx.font = '13px Arial';
+      ctx.fillText('x', 62, 94);
+      ctx.fillText('y = -(a·x² + c)/b', 140, 94);
+      let rowY = 116;
+      for (let i=0;i<=10;i++){
+        const x = i/10;
+        const y = yFrom(a,b,c,x);
+        const feas = Number.isFinite(y) && y>=0 && y<=1 ? '✓' : '✗';
+        ctx.fillText(`${x.toFixed(2)}`, 62, rowY);
+        ctx.fillText(`${fmt(y)}`, 140, rowY);
+        ctx.fillText(`${feas}`, 350, rowY);
+        rowY += 22;
+      }
+      statusDiv.innerHTML = `<span class="mini">Green ✓ means y is a valid probability at that x.</span>`;
+    }
+
+    function loadExample(obj){
+      aEl.value = obj.a; bEl.value = obj.b; cEl.value = obj.c; xRange.value = 0.5; xVal.textContent = '0.500';
+      plotCurve();
+    }
+
+    // wiring
+    xRange.addEventListener('input', ()=>{ xVal.textContent = parseFloat(xRange.value).toFixed(3); });
+    calcBtn.addEventListener('click', calcOnce);
+    plotBtn.addEventListener('click', plotCurve);
+    tableBtn.addEventListener('click', makeTable);
+    document.querySelectorAll('.examples button[data-eg]').forEach(btn=>{
+      btn.addEventListener('click', ()=> loadExample(JSON.parse(btn.dataset.eg)));
+    });
+
+    // initial render
+    plotCurve();
+  </script>
+</body>
+</html>
