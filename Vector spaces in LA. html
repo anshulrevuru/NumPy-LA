@@ -1,0 +1,117 @@
+<!DOCTYPE html>
+<html>
+<head>
+  <title>Vector Space Calculator</title>
+  <style>
+    body { font-family: Arial, sans-serif; margin: 20px; }
+    canvas { border: 1px solid black; margin-top: 15px; }
+    input, textarea { width: 100%; margin: 5px 0; padding: 8px; }
+    button { margin-top: 10px; padding: 10px; cursor: pointer; }
+  </style>
+</head>
+<body>
+  <h2>Vector Space Calculator</h2>
+
+  <label>Enter vectors (rows separated by ';', entries by ','):</label>
+  <textarea id="vectors" rows="3">1,2; 3,4</textarea>
+
+  <label>Enter test vector (optional):</label>
+  <input type="text" id="testVector" placeholder="e.g. 5,6" />
+
+  <button onclick="analyzeVectors()">Analyze</button>
+
+  <h3>Results:</h3>
+  <pre id="results"></pre>
+
+  <canvas id="canvas" width="600" height="300"></canvas>
+
+<script>
+function parseVectors(input) {
+  return input.split(';').map(row => row.trim().split(',').map(Number));
+}
+
+function gaussianElimination(matrix) {
+  let m = matrix.map(row => [...row]);
+  let rows = m.length, cols = m[0].length;
+  let rank = 0;
+  for (let col = 0; col < cols; col++) {
+    let pivot = -1;
+    for (let r = rank; r < rows; r++) {
+      if (Math.abs(m[r][col]) > 1e-10) { pivot = r; break; }
+    }
+    if (pivot === -1) continue;
+    [m[rank], m[pivot]] = [m[pivot], m[rank]];
+    let div = m[rank][col];
+    for (let c = col; c < cols; c++) m[rank][c] /= div;
+    for (let r = 0; r < rows; r++) {
+      if (r !== rank && Math.abs(m[r][col]) > 1e-10) {
+        let factor = m[r][col];
+        for (let c = col; c < cols; c++) m[r][c] -= factor * m[rank][c];
+      }
+    }
+    rank++;
+  }
+  return { rank, rref: m };
+}
+
+function analyzeVectors() {
+  const vecInput = document.getElementById('vectors').value;
+  let vectors = parseVectors(vecInput);
+  if (vectors.length === 0 || vectors[0].length === 0) {
+    document.getElementById('results').textContent = 'Invalid input!';
+    return;
+  }
+
+  let { rank, rref } = gaussianElimination(vectors);
+  let basis = rref.filter(row => row.some(val => Math.abs(val) > 1e-10));
+
+  let resultText = `Dimension of Span: ${rank}\nBasis Vectors: ${basis.map(r => '[' + r.map(v=>v.toFixed(2)).join(', ') + ']').join(', ')}\n`;
+
+  const testVecStr = document.getElementById('testVector').value.trim();
+  if (testVecStr) {
+    let testVec = testVecStr.split(',').map(Number);
+    if (testVec.length !== vectors[0].length) {
+      resultText += `Test vector has wrong dimension.\n`;
+    } else {
+      let augmented = vectors.map((row, i) => [...row, testVec[i]]);
+      let { rank: r1 } = gaussianElimination(vectors);
+      let { rank: r2 } = gaussianElimination(augmented);
+      if (r1 === r2) {
+        resultText += `Test vector IS in the span.\n`;
+      } else {
+        resultText += `Test vector is NOT in the span.\n`;
+      }
+    }
+  }
+
+  document.getElementById('results').textContent = resultText;
+  drawCanvas(vectors, basis);
+}
+
+function drawCanvas(vectors, basis) {
+  const canvas = document.getElementById('canvas');
+  const ctx = canvas.getContext('2d');
+  ctx.clearRect(0, 0, canvas.width, canvas.height);
+
+  ctx.translate(50, canvas.height - 50);
+  ctx.scale(1, -1);
+
+  ctx.strokeStyle = 'blue';
+  vectors.forEach(v => {
+    if (v.length === 2) {
+      ctx.beginPath(); ctx.moveTo(0,0); ctx.lineTo(v[0]*40, v[1]*40); ctx.stroke();
+    }
+  });
+
+  ctx.strokeStyle = 'red';
+  basis.forEach(v => {
+    if (v.length === 2) {
+      ctx.beginPath(); ctx.moveTo(0,0); ctx.lineTo(v[0]*40, v[1]*40); ctx.stroke();
+    }
+  });
+
+  ctx.setTransform(1,0,0,1,0,0);
+}
+</script>
+</body>
+</html>
