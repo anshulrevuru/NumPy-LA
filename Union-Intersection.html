@@ -1,0 +1,79 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Mean, Median & Mode Calculator</title>
+    <style>
+        body { font-family: Arial, sans-serif; text-align: center; margin-top: 30px; }
+        canvas { border: 1px solid #000; margin-top: 20px; }
+        input { margin: 5px; width: 250px; }
+        button { margin: 10px; padding: 5px 15px; }
+        .formula { text-align: left; display: inline-block; margin-top: 20px; }
+    </style>
+</head>
+<body>
+
+<h2>Calculate Mean, Median & Mode</h2>
+
+<div class="formula">
+    <p><b>Formulas:</b></p>
+    <ul>
+        <li><b>Mean</b>: Mean = (Sum of all numbers) / (Total number of numbers) = Σxᵢ / n</li>
+        <li><b>Median</b>: Median = Middle number after sorting the dataset. If dataset size is even: Median = (Middle1 + Middle2) / 2</li>
+        <li><b>Mode</b>: Mode = Number(s) that appear most frequently in the dataset</li>
+    </ul>
+</div>
+
+<input type="text" id="numbers" placeholder="Enter numbers (comma-separated)" value="1,2,2,3,4">
+<br>
+<button id="calcBtn">Calculate</button>
+
+<canvas id="canvas" width="600" height="400"></canvas>
+
+<script>
+function calculateStats() {
+    const canvas = document.getElementById('canvas');
+    const ctx = canvas.getContext('2d');
+    ctx.clearRect(0, 0, canvas.width, canvas.height);
+
+    let nums = document.getElementById('numbers').value.split(',').map(Number).filter(n => !isNaN(n));
+    if(nums.length === 0) {
+        ctx.fillText('Please enter valid numbers!', 150, 200);
+        return;
+    }
+
+    // Calculate mean
+    let sum = nums.reduce((a, b) => a + b, 0);
+    let mean = sum / nums.length;
+
+    // Calculate median
+    nums.sort((a, b) => a - b);
+    let median;
+    let mid = Math.floor(nums.length / 2);
+    if(nums.length % 2 === 0) {
+        median = (nums[mid - 1] + nums[mid]) / 2;
+    } else {
+        median = nums[mid];
+    }
+
+    // Calculate mode
+    let freq = {};
+    nums.forEach(n => freq[n] = (freq[n] || 0) + 1);
+    let maxFreq = Math.max(...Object.values(freq));
+    let mode = Object.keys(freq).filter(n => freq[n] === maxFreq).map(Number);
+
+    // Draw results
+    ctx.fillStyle = 'black';
+    ctx.font = '18px Arial';
+    ctx.fillText('Numbers: {' + nums.join(', ') + '}', 50, 50);
+    ctx.fillText('Mean: ' + mean.toFixed(2), 50, 100);
+    ctx.fillText('Median: ' + median, 50, 150);
+    ctx.fillText('Mode: {' + mode.join(', ') + '}', 50, 200);
+}
+
+document.getElementById('calcBtn').addEventListener('click', calculateStats);
+</script>
+
+</body>
+</html>
