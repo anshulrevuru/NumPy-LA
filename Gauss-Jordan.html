@@ -1,0 +1,87 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Gauss-Jordan Matrix Calculator</title>
+  <style>
+    body { font-family: Arial, sans-serif; text-align: center; margin-top: 30px; }
+    canvas { border: 1px solid #000; margin-top: 20px; }
+    input { margin: 5px; width: 250px; }
+    button { margin: 10px; padding: 5px 15px; }
+  </style>
+</head>
+<body>
+
+<h2>Gauss-Jordan Method Calculator</h2>
+<p>Enter an augmented matrix (rows separated by semicolons, numbers by commas):</p>
+<input type="text" id="matrixInput" placeholder="Example: 2,1,-1,8; -3,-1,2,-11; -2,1,2,-3" 
+       value="2,1,-1,8; -3,-1,2,-11; -2,1,2,-3">
+<br>
+<button id="calcBtn">Solve</button>
+
+<canvas id="canvas" width="800" height="400"></canvas>
+
+<script>
+function gaussJordan(matrix) {
+  let n = matrix.length;
+  let m = matrix[0].length;
+
+  for (let i = 0; i < n; i++) {
+    // Make the diagonal element 1
+    let diag = matrix[i][i];
+    if (diag === 0) {
+      for (let k = i + 1; k < n; k++) {
+        if (matrix[k][i] !== 0) {
+          [matrix[i], matrix[k]] = [matrix[k], matrix[i]];
+          diag = matrix[i][i];
+          break;
+        }
+      }
+    }
+    for (let j = 0; j < m; j++) {
+      matrix[i][j] /= diag;
+    }
+
+    // Make other elements in column i zero
+    for (let k = 0; k < n; k++) {
+      if (k !== i) {
+        let factor = matrix[k][i];
+        for (let j = 0; j < m; j++) {
+          matrix[k][j] -= factor * matrix[i][j];
+        }
+      }
+    }
+  }
+  return matrix;
+}
+
+function calculateGaussJordan() {
+  const canvas = document.getElementById('canvas');
+  const ctx = canvas.getContext('2d');
+  ctx.clearRect(0, 0, canvas.width, canvas.height);
+
+  let input = document.getElementById('matrixInput').value.trim();
+  let rows = input.split(';').map(r => r.split(',').map(Number));
+
+  let result = gaussJordan(rows);
+
+  ctx.fillStyle = 'black';
+  ctx.font = '18px Arial';
+  ctx.fillText('Reduced Row Echelon Form (RREF):', 50, 50);
+
+  for (let i = 0; i < result.length; i++) {
+    ctx.fillText(result[i].map(v => v.toFixed(2)).join(' , '), 100, 100 + i * 30);
+  }
+
+  ctx.fillText('Solution:', 50, 100 + result.length * 30 + 30);
+  for (let i = 0; i < result.length; i++) {
+    ctx.fillText('x' + (i+1) + ' = ' + result[i][result[i].length - 1].toFixed(2), 100, 100 + result.length * 30 + 70 + i*30);
+  }
+}
+
+document.getElementById('calcBtn').addEventListener('click', calculateGaussJordan);
+</script>
+
+</body>
+</html>
