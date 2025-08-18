@@ -1,0 +1,72 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Binomial Distribution Calculator</title>
+  <style>
+    body { font-family: Arial, sans-serif; text-align: center; margin-top: 30px; }
+    canvas { border: 1px solid #000; margin-top: 20px; }
+    input { margin: 5px; width: 150px; }
+    button { margin: 10px; padding: 5px 15px; }
+  </style>
+</head>
+<body>
+
+<h2>Binomial Distribution Calculator</h2>
+<p>Enter number of trials (n), probability of success (p), and number of successes (k):</p>
+<input type="number" id="trials" placeholder="n (trials)" value="5">
+<input type="number" id="prob" placeholder="p (0-1)" step="0.01" value="0.5">
+<input type="number" id="successes" placeholder="k (successes)" value="2">
+<br>
+<button id="calcBtn">Calculate</button>
+
+<canvas id="canvas" width="800" height="400"></canvas>
+
+<script>
+function factorial(num) {
+  if (num === 0 || num === 1) return 1;
+  let result = 1;
+  for (let i = 2; i <= num; i++) result *= i;
+  return result;
+}
+
+function binomialCoefficient(n, k) {
+  return factorial(n) / (factorial(k) * factorial(n - k));
+}
+
+function binomialProbability(n, p, k) {
+  return binomialCoefficient(n, k) * Math.pow(p, k) * Math.pow(1 - p, n - k);
+}
+
+function calculateBinomial() {
+  const canvas = document.getElementById('canvas');
+  const ctx = canvas.getContext('2d');
+  ctx.clearRect(0, 0, canvas.width, canvas.height);
+
+  let n = parseInt(document.getElementById('trials').value);
+  let p = parseFloat(document.getElementById('prob').value);
+  let k = parseInt(document.getElementById('successes').value);
+
+  let probability = binomialProbability(n, p, k);
+
+  ctx.fillStyle = 'black';
+  ctx.font = '18px Arial';
+  ctx.fillText(`Binomial Distribution Formula: P(X=k) = C(n,k) * p^k * (1-p)^(n-k)`, 50, 50);
+  ctx.fillText(`n = ${n}, p = ${p}, k = ${k}`, 50, 80);
+  ctx.fillText(`P(X=${k}) = ${probability.toFixed(5)}`, 50, 120);
+
+  // Draw probability distribution for all k values
+  ctx.fillText("Distribution for all values of k (0 to n):", 50, 160);
+  let startY = 200;
+  for (let i = 0; i <= n; i++) {
+    let prob = binomialProbability(n, p, i);
+    ctx.fillText(`P(X=${i}) = ${prob.toFixed(5)}`, 100, startY + i * 25);
+  }
+}
+
+document.getElementById('calcBtn').addEventListener('click', calculateBinomial);
+</script>
+
+</body>
+</html>
