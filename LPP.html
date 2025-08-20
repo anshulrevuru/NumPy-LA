@@ -1,0 +1,175 @@
+<!DOCTYPE html>
+<html>
+<head>
+  <title>LPP Canvas Solver</title>
+  <style>
+    body { font-family: Arial; }
+    input, select { margin: 5px; width: 50px; }
+    #canvasContainer { margin-top: 20px; }
+  </style>
+</head>
+<body>
+
+<h2>Linear Programming Problem Solver (2 Variables)</h2>
+
+<h3>Objective Function: Maximize Z = </h3>
+X: <input type="number" id="c1" value="3">
+Y: <input type="number" id="c2" value="5">
+
+<h3>Constraints (max 3)</h3>
+<div id="constraints">
+  <div>
+    X: <input type="number" class="a" value="1">
+    Y: <input type="number" class="b" value="2">
+    <select class="ineq">
+      <option value="<=">&le;</option>
+      <option value=">=">&ge;</option>
+      <option value="=">=</option>
+    </select>
+    <input type="number" class="c" value="10">
+  </div>
+  <div>
+    X: <input type="number" class="a" value="3">
+    Y: <input type="number" class="b" value="1">
+    <select class="ineq">
+      <option value="<=">&le;</option>
+      <option value=">=" selected>&ge;</option>
+      <option value="=">=</option>
+    </select>
+    <input type="number" class="c" value="6">
+  </div>
+  <div>
+    X: <input type="number" class="a" value="1">
+    Y: <input type="number" class="b" value="1">
+    <select class="ineq">
+      <option value="<=">&le;</option>
+      <option value=">=">&ge;</option>
+      <option value="=">=</option>
+    </select>
+    <input type="number" class="c" value="7">
+  </div>
+</div>
+
+<button onclick="plotLPP()">Plot LPP</button>
+
+<div id="canvasContainer">
+  <canvas id="lppCanvas" width="500" height="500" style="border:1px solid #000;"></canvas>
+</div>
+
+<p id="optimal"></p>
+
+<script>
+const canvas = document.getElementById("lppCanvas");
+const ctx = canvas.getContext("2d");
+const scale = 40; // 1 unit = 40 pixels
+const originX = 50;
+const originY = 450;
+
+function drawAxes() {
+    ctx.clearRect(0, 0, canvas.width, canvas.height);
+    ctx.beginPath();
+    ctx.moveTo(originX, originY); ctx.lineTo(450, originY); // X-axis
+    ctx.moveTo(originX, originY); ctx.lineTo(originX, 50);  // Y-axis
+    ctx.strokeStyle = "black";
+    ctx.stroke();
+
+    // Axis labels
+    ctx.font = "12px Arial";
+    for(let i=0;i<=10;i++){
+        ctx.fillText(i, originX+i*scale-5, originY+15);
+        ctx.fillText(i, originX-20, originY-i*scale+5);
+    }
+}
+
+function drawConstraint(a,b,c,type){
+    // Draw line y = (c - a*x)/b
+    let points = [];
+    let xVals = [0, 10]; 
+    xVals.forEach(x => {
+        let y = (b!==0) ? (c - a*x)/b : 0;
+        points.push({x,y});
+    });
+    ctx.beginPath();
+    ctx.moveTo(originX+points[0].x*scale, originY-points[0].y*scale);
+    ctx.lineTo(originX+points[1].x*scale, originY-points[1].y*scale);
+    ctx.strokeStyle = (type=="<=") ? "green" : (type==">=" ? "red" : "blue");
+    ctx.lineWidth = 2;
+    ctx.stroke();
+}
+
+function plotLPP() {
+    drawAxes();
+
+    // Read constraints
+    let constraints = [];
+    const divs = document.querySelectorAll("#constraints div");
+    divs.forEach(d => {
+        let a = parseFloat(d.querySelector(".a").value);
+        let b = parseFloat(d.querySelector(".b").value);
+        let c = parseFloat(d.querySelector(".c").value);
+        let type = d.querySelector(".ineq").value;
+        constraints.push({a,b,c,type});
+        drawConstraint(a,b,c,type);
+    });
+
+    // Non-negativity constraints
+    constraints.push({a:1,b:0,c:0,type:">="});
+    constraints.push({a:0,b:1,c:0,type:">="});
+
+    // Compute vertices (intersection points)
+    let vertices = [];
+    for(let i=0;i<constraints.length;i++){
+        for(let j=i+1;j<constraints.length;j++){
+            let A = [[constraints[i].a,constraints[i].b],[constraints[j].a,constraints[j].b]];
+            let B = [constraints[i].c,constraints[j].c];
+            let det = A[0][0]*A[1][1]-A[0][1]*A[1][0];
+            if(det!==0){
+                let x = (B[0]*A[1][1]-B[1]*A[0][1])/det;
+                let y = (A[0][0]*B[1]-A[1][0]*B[0])/det;
+                if(x>=-0.0001 && y>=-0.0001){
+                    // Check all constraints
+                    let ok = true;
+                    constraints.forEach(con=>{
+                        if(con.type=="<=" && (con.a*x+con.b*y)>con.c+0.0001) ok=false;
+                        if(con.type==">=" && (con.a*x+con.b*y)<con.c-0.0001) ok=false;
+                        if(con.type=="=" && Math.abs(con.a*x+con.b*y-con.c)>0.0001) ok=false;
+                    });
+                    if(ok) vertices.push({x,y});
+                }
+            }
+        }
+    }
+
+    // Remove duplicate vertices
+    vertices = vertices.filter((v, index, self) =>
+        index === self.findIndex((t) => Math.abs(t.x-v.x)<0.001 && Math.abs(t.y-v.y)<0.001)
+    );
+
+    // Plot vertices
+    ctx.fillStyle = "purple";
+    vertices.forEach(v=>{
+        ctx.beginPath();
+        ctx.arc(originX+v.x*scale, originY-v.y*scale, 5,0,2*Math.PI);
+        ctx.fill();
+    });
+
+    // Compute Z
+    let c1 = parseFloat(document.getElementById("c1").value);
+    let c2 = parseFloat(document.getElementById("c2").value);
+    let Zmax = -Infinity;
+    let optPoint = null;
+    vertices.forEach(v=>{
+        let Z = c1*v.x + c2*v.y;
+        if(Z > Zmax){ Zmax = Z; optPoint = v; }
+    });
+
+    if(optPoint)
+        document.getElementById("optimal").innerHTML = 
+          `Optimal Z = ${Zmax.toFixed(2)} at (X=${optPoint.x.toFixed(2)}, Y=${optPoint.y.toFixed(2)})`;
+    else
+        document.getElementById("optimal").innerHTML = "No feasible solution!";
+}
+</script>
+
+</body>
+</html>
