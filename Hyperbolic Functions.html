@@ -1,0 +1,107 @@
+<!DOCTYPE html>
+<html>
+<head>
+  <title>Hyperbolic Functions Calculator</title>
+  <style>
+    body { font-family: Arial, sans-serif; text-align: center; }
+    canvas { border: 1px solid black; margin-top: 10px; }
+    input, button { margin: 5px; padding: 6px; font-size: 14px; }
+  </style>
+</head>
+<body>
+  <h2>Hyperbolic Functions Calculator</h2>
+  <p>Enter value of x:</p>
+  <input id="xVal" type="number" step="any" value="1">
+  <button onclick="calculate()">Calculate</button>
+  
+  <h3>Results:</h3>
+  <p id="sinh"></p>
+  <p id="cosh"></p>
+  <p id="tanh"></p>
+  <p id="coth"></p>
+  <p id="sech"></p>
+  <p id="csch"></p>
+
+  <p><i>Formulas: sinh(x) = (eˣ - e⁻ˣ)/2, cosh(x) = (eˣ + e⁻ˣ)/2, tanh(x) = sinh(x)/cosh(x)</i></p>
+  
+  <canvas id="canvas" width="600" height="400"></canvas>
+  
+  <script>
+    function calculate() {
+      let x = parseFloat(document.getElementById("xVal").value);
+
+      // hyperbolic calculations
+      let sinh = Math.sinh(x);
+      let cosh = Math.cosh(x);
+      let tanh = Math.tanh(x);
+      let coth = (sinh !== 0) ? cosh / sinh : NaN;
+      let sech = 1 / cosh;
+      let csch = (sinh !== 0) ? 1 / sinh : NaN;
+
+      // display
+      document.getElementById("sinh").innerText = `sinh(${x}) = ${sinh.toFixed(4)}`;
+      document.getElementById("cosh").innerText = `cosh(${x}) = ${cosh.toFixed(4)}`;
+      document.getElementById("tanh").innerText = `tanh(${x}) = ${tanh.toFixed(4)}`;
+      document.getElementById("coth").innerText = `coth(${x}) = ${isNaN(coth) ? "undefined" : coth.toFixed(4)}`;
+      document.getElementById("sech").innerText = `sech(${x}) = ${sech.toFixed(4)}`;
+      document.getElementById("csch").innerText = `csch(${x}) = ${isNaN(csch) ? "undefined" : csch.toFixed(4)}`;
+
+      drawGraph(x, sinh, cosh, tanh);
+    }
+
+    function drawGraph(x, sinhVal, coshVal, tanhVal) {
+      let canvas = document.getElementById("canvas");
+      let ctx = canvas.getContext("2d");
+      ctx.clearRect(0, 0, canvas.width, canvas.height);
+
+      // scaling
+      let xScale = 40;
+      let yScale = 40;
+      let originX = canvas.width / 2;
+      let originY = canvas.height / 2;
+
+      // draw axes
+      ctx.beginPath();
+      ctx.moveTo(0, originY);
+      ctx.lineTo(canvas.width, originY);
+      ctx.moveTo(originX, 0);
+      ctx.lineTo(originX, canvas.height);
+      ctx.strokeStyle = "black";
+      ctx.stroke();
+
+      // helper to draw function
+      function plotFunc(func, color) {
+        ctx.beginPath();
+        ctx.strokeStyle = color;
+        let first = true;
+        for (let px = -originX / xScale; px < originX / xScale; px += 0.05) {
+          let xv = px;
+          let yv = func(xv);
+          let cx = originX + xv * xScale;
+          let cy = originY - yv * yScale;
+          if (first) { ctx.moveTo(cx, cy); first = false; }
+          else ctx.lineTo(cx, cy);
+        }
+        ctx.stroke();
+      }
+
+      // plot sinh, cosh, tanh
+      plotFunc(Math.sinh, "blue");
+      plotFunc(Math.cosh, "red");
+      plotFunc(Math.tanh, "green");
+
+      // mark computed points
+      function markPoint(xv, yv, color) {
+        ctx.beginPath();
+        ctx.arc(originX + xv * xScale, originY - yv * yScale, 4, 0, 2 * Math.PI);
+        ctx.fillStyle = color;
+        ctx.fill();
+      }
+
+      markPoint(x, sinhVal, "blue");
+      markPoint(x, coshVal, "red");
+      markPoint(x, tanhVal, "green");
+    }
+  </script>
+</body>
+</html>
