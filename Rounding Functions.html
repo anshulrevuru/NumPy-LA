@@ -1,0 +1,57 @@
+<!DOCTYPE html>
+<html>
+<head>
+  <title>Rounding Functions Calculator</title>
+  <style>
+    body {
+      font-family: Arial, sans-serif;
+      text-align: center;
+      margin-top: 50px;
+    }
+    canvas {
+      border: 1px solid #000;
+      margin-top: 20px;
+    }
+    input, button {
+      margin: 10px;
+      padding: 5px;
+    }
+  </style>
+</head>
+<body>
+  <h2>Rounding Functions Calculator</h2>
+  <p>Enter a number to see its Floor, Ceil, Round, and Truncate values:</p>
+  <input type="number" id="num" step="any" placeholder="Enter a number">
+  <button onclick="calculate()">Calculate</button>
+
+  <canvas id="outputCanvas" width="500" height="250"></canvas>
+
+  <script>
+    function calculate() {
+      const num = parseFloat(document.getElementById('num').value);
+      if (isNaN(num)) {
+        alert("Please enter a valid number!");
+        return;
+      }
+
+      // Calculations
+      const floorVal = Math.floor(num);
+      const ceilVal = Math.ceil(num);
+      const roundVal = Math.round(num);
+      const truncVal = Math.trunc(num);
+
+      // Draw on canvas
+      const canvas = document.getElementById('outputCanvas');
+      const ctx = canvas.getContext('2d');
+      ctx.clearRect(0, 0, canvas.width, canvas.height);
+
+      ctx.font = "18px Arial";
+      ctx.fillText(`Input Number: ${num}`, 20, 40);
+      ctx.fillText(`Floor (⌊x⌋): ${floorVal}`, 20, 80);
+      ctx.fillText(`Ceil (⌈x⌉): ${ceilVal}`, 20, 120);
+      ctx.fillText(`Round: ${roundVal}`, 20, 160);
+      ctx.fillText(`Truncate: ${truncVal}`, 20, 200);
+    }
+  </script>
+</body>
+</html>
