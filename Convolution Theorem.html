@@ -1,0 +1,119 @@
+<!DOCTYPE html>
+<html>
+<head>
+  <title>Convolution Theorem Calculator</title>
+  <style>
+    body { font-family: Arial, sans-serif; text-align: center; }
+    canvas { border: 1px solid black; margin-top: 10px; }
+    input { width: 250px; }
+  </style>
+</head>
+<body>
+  <h2>Convolution Theorem Calculator</h2>
+  <p>Enter two discrete sequences (comma-separated numbers):</p>
+  
+  <input id="seqA" value="1,2,1">
+  <input id="seqB" value="1,1,1">
+  <button onclick="calculate()">Calculate</button>
+  
+  <h3>Results:</h3>
+  <p id="convResult"></p>
+  <p id="fourierResult"></p>
+  
+  <canvas id="canvas" width="600" height="300"></canvas>
+  
+  <script>
+    function dft(arr) {
+      let N = arr.length;
+      let result = [];
+      for (let k = 0; k < N; k++) {
+        let real = 0, imag = 0;
+        for (let n = 0; n < N; n++) {
+          let angle = (-2 * Math.PI * k * n) / N;
+          real += arr[n] * Math.cos(angle);
+          imag += arr[n] * Math.sin(angle);
+        }
+        result.push([real, imag]);
+      }
+      return result;
+    }
+
+    function idft(arr) {
+      let N = arr.length;
+      let result = [];
+      for (let n = 0; n < N; n++) {
+        let real = 0;
+        for (let k = 0; k < N; k++) {
+          let angle = (2 * Math.PI * k * n) / N;
+          real += arr[k][0] * Math.cos(angle) - arr[k][1] * Math.sin(angle);
+        }
+        result.push(real / N);
+      }
+      return result;
+    }
+
+    function convolve(a, b) {
+      let result = Array(a.length + b.length - 1).fill(0);
+      for (let i = 0; i < a.length; i++) {
+        for (let j = 0; j < b.length; j++) {
+          result[i + j] += a[i] * b[j];
+        }
+      }
+      return result;
+    }
+
+    function drawStemPlot(ctx, data, offsetX, offsetY, color, label) {
+      ctx.strokeStyle = color;
+      ctx.fillStyle = color;
+      let spacing = 40;
+      for (let i = 0; i < data.length; i++) {
+        let x = offsetX + i * spacing;
+        let y = offsetY - data[i] * 20;
+        ctx.beginPath();
+        ctx.moveTo(x, offsetY);
+        ctx.lineTo(x, y);
+        ctx.stroke();
+        ctx.beginPath();
+        ctx.arc(x, y, 4, 0, 2 * Math.PI);
+        ctx.fill();
+        ctx.fillText(data[i].toFixed(2), x - 10, y - 10);
+      }
+      ctx.fillText(label, offsetX, offsetY + 20);
+    }
+
+    function calculate() {
+      let A = document.getElementById("seqA").value.split(",").map(Number);
+      let B = document.getElementById("seqB").value.split(",").map(Number);
+
+      let conv = convolve(A, B);
+      document.getElementById("convResult").innerText = `Convolution (time domain): [${conv}]`;
+
+      let N = A.length + B.length - 1;
+      let A_padded = [...A, ...Array(N - A.length).fill(0)];
+      let B_padded = [...B, ...Array(N - B.length).fill(0)];
+
+      let FA = dft(A_padded);
+      let FB = dft(B_padded);
+
+      let prod = [];
+      for (let i = 0; i < N; i++) {
+        let real = FA[i][0] * FB[i][0] - FA[i][1] * FB[i][1];
+        let imag = FA[i][0] * FB[i][1] + FA[i][1] * FB[i][0];
+        prod.push([real, imag]);
+      }
+
+      let conv_fourier = idft(prod);
+      document.getElementById("fourierResult").innerText = `Convolution via Fourier: [${conv_fourier.map(x => x.toFixed(2))}]`;
+
+      let canvas = document.getElementById("canvas");
+      let ctx = canvas.getContext("2d");
+      ctx.clearRect(0, 0, canvas.width, canvas.height);
+      ctx.font = "12px Arial";
+
+      drawStemPlot(ctx, A, 40, 120, "green", "Sequence A");
+      drawStemPlot(ctx, B, 40, 260, "red", "Sequence B");
+      drawStemPlot(ctx, conv, 320, 200, "blue", "Convolution");
+    }
+  </script>
+</body>
+</html>
