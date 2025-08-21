@@ -1,0 +1,131 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Optics Calculator - Mirrors & Lenses</title>
+  <style>
+    body { font-family: Arial, sans-serif; text-align: center; margin: 20px; }
+    canvas { border: 1px solid black; margin-top: 20px; }
+  </style>
+</head>
+<body>
+  <h2>Mirrors & Lenses Calculator</h2>
+  
+  <label for="type">Choose Type:</label>
+  <select id="type">
+    <option value="concave_mirror">Concave Mirror</option>
+    <option value="convex_mirror">Convex Mirror</option>
+    <option value="concave_lens">Concave Lens</option>
+    <option value="convex_lens">Convex Lens</option>
+  </select><br><br>
+  
+  <label>Object Distance (u):</label>
+  <input type="number" id="u" value="20"> cm<br><br>
+  
+  <label>Focal Length (f):</label>
+  <input type="number" id="f" value="10"> cm<br><br>
+  
+  <button onclick="calculate()">Calculate</button>
+  
+  <h3>Results:</h3>
+  <p id="results"></p>
+  
+  <canvas id="diagram" width="700" height="300"></canvas>
+  
+  <script>
+    function calculate() {
+      const type = document.getElementById("type").value;
+      let u = parseFloat(document.getElementById("u").value);
+      let f = parseFloat(document.getElementById("f").value);
+
+      // Sign convention
+      if (type.includes("mirror")) {
+        u = -u; // object always to the left
+        if (type === "convex_mirror") f = -f;
+      } else {
+        if (type === "concave_lens") f = -f;
+      }
+
+      // Formula: v = f*u / (u - f)
+      let v = (f * u) / (u - f);
+      let M = v / u;
+
+      // Image nature
+      let nature = "";
+      if (M < 0) nature = "Real, Inverted";
+      else nature = "Virtual, Upright";
+
+      if (Math.abs(M) > 1) nature += ", Magnified";
+      else nature += ", Diminished";
+
+      document.getElementById("results").innerHTML =
+        `Image Distance (v): ${v.toFixed(2)} cm <br>
+         Magnification (M): ${M.toFixed(2)} <br>
+         Nature: ${nature}`;
+
+      drawDiagram(type, u, v, f);
+    }
+
+    function drawDiagram(type, u, v, f) {
+      const canvas = document.getElementById("diagram");
+      const ctx = canvas.getContext("2d");
+      ctx.clearRect(0, 0, canvas.width, canvas.height);
+
+      const axisY = canvas.height / 2;
+      const centerX = canvas.width / 2;
+
+      // Draw principal axis
+      ctx.beginPath();
+      ctx.moveTo(0, axisY);
+      ctx.lineTo(canvas.width, axisY);
+      ctx.stroke();
+
+      // Scale factor for distances
+      const scale = 10;
+
+      // Object position
+      const objectX = centerX - u * scale;
+      const objectY = axisY - 50;
+
+      // Image position
+      const imageX = centerX + v * scale;
+      const imageY = axisY - 50 * (v / u);
+
+      // Draw object arrow
+      ctx.beginPath();
+      ctx.moveTo(objectX, axisY);
+      ctx.lineTo(objectX, objectY);
+      ctx.strokeStyle = "blue";
+      ctx.stroke();
+      ctx.fillText("Object", objectX - 20, objectY - 5);
+
+      // Draw image arrow
+      ctx.beginPath();
+      ctx.moveTo(imageX, axisY);
+      ctx.lineTo(imageX, imageY);
+      ctx.strokeStyle = "red";
+      ctx.stroke();
+      ctx.fillText("Image", imageX - 20, imageY - 5);
+
+      // Draw optical element (mirror or lens)
+      ctx.strokeStyle = "black";
+      ctx.beginPath();
+      if (type === "concave_mirror") {
+        ctx.arc(centerX, axisY, 60, Math.PI/4, (3*Math.PI)/4);
+      } else if (type === "convex_mirror") {
+        ctx.arc(centerX, axisY, 60, -Math.PI/4, -3*Math.PI/4, true);
+      } else if (type.includes("lens")) {
+        ctx.moveTo(centerX, axisY - 60);
+        ctx.bezierCurveTo(centerX - 20, axisY - 30, centerX - 20, axisY + 30, centerX, axisY + 60);
+        ctx.moveTo(centerX, axisY - 60);
+        ctx.bezierCurveTo(centerX + 20, axisY - 30, centerX + 20, axisY + 30, centerX, axisY + 60);
+      }
+      ctx.stroke();
+
+      // Draw F (focus)
+      ctx.fillText("F", centerX + f * scale, axisY - 5);
+    }
+  </script>
+</body>
+</html>
