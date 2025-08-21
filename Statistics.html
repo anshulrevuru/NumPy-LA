@@ -1,0 +1,125 @@
+<!DOCTYPE html>
+<html>
+<head>
+  <title>Statistics Analyzer (Class 11 - Chapter 15)</title>
+  <style>
+    body { font-family: Arial, sans-serif; padding: 20px; }
+    textarea, input { width: 100%; margin: 5px 0; padding: 8px; }
+    label { font-weight: bold; }
+    #canvasContainer { margin-top: 20px; }
+    #stats { margin-top: 15px; }
+  </style>
+</head>
+<body>
+  <h2>Statistics Analyzer</h2>
+  <p>Choose data type:</p>
+  <select id="dataType" onchange="toggleInput()">
+    <option value="raw">Raw Data (comma-separated)</option>
+    <option value="grouped">Grouped Data (class:freq, comma-separated)</option>
+  </select>
+  
+  <div id="rawInput">
+    <label>Raw Data:</label>
+    <textarea id="rawData" rows="3">5, 7, 9, 10, 12</textarea>
+  </div>
+  
+  <div id="groupedInput" style="display:none;">
+    <label>Grouped Data (e.g. 10-20:3, 20-30:5):</label>
+    <textarea id="groupedData" rows="3">10-20:3, 20-30:5, 30-40:2</textarea>
+  </div>
+  
+  <button onclick="computeStats()">Compute & Visualize</button>
+  
+  <div id="stats"></div>
+  
+  <div id="canvasContainer">
+    <canvas id="chartCanvas" width="600" height="400" style="border:1px solid #000;"></canvas>
+  </div>
+  
+  <script>
+    function toggleInput(){
+      const type = document.getElementById('dataType').value;
+      document.getElementById('rawInput').style.display = type === 'raw' ? 'block' : 'none';
+      document.getElementById('groupedInput').style.display = type === 'grouped' ? 'block' : 'none';
+    }
+    
+    function computeStats(){
+      const type = document.getElementById('dataType').value;
+      let data = [], freq = [];
+      
+      if(type === 'raw'){
+        const nums = document.getElementById('rawData').value.split(',');
+        nums.forEach(s => {
+          const v = parseFloat(s);
+          if(!isNaN(v)){
+            data.push(v);
+            freq.push(1);
+          }
+        });
+      } else {
+        const parts = document.getElementById('groupedData').value.split(',');
+        parts.forEach(p => {
+          const [cls, f] = p.split(':');
+          const [lo, hi] = cls.split('-').map(Number);
+          const mid = (lo + hi)/2;
+          const fv = parseFloat(f);
+          if(!isNaN(mid) && !isNaN(fv)){
+            data.push(mid);
+            freq.push(fv);
+          }
+        });
+      }
+      if(!data.length){ alert('Invalid or empty data'); return; }
+      
+      const n = freq.reduce((a,b)=>a+b, 0);
+      const sumfx = data.reduce((a,x,i)=>a + x * freq[i], 0);
+      const mean = sumfx / n;
+      const md = data.reduce((a,x,i)=>a + freq[i]*Math.abs(x - mean), 0) / n;
+      const variance = data.reduce((a,x,i)=>a + freq[i]*((x - mean)**2), 0) / n;
+      const stddev = Math.sqrt(variance);
+      
+      document.getElementById('stats').innerHTML = `
+        <p><strong>Mean:</strong> ${mean.toFixed(3)}</p>
+        <p><strong>Mean Deviation:</strong> ${md.toFixed(3)}</p>
+        <p><strong>Variance:</strong> ${variance.toFixed(3)}</p>
+        <p><strong>Standard Deviation:</strong> ${stddev.toFixed(3)}</p>
+      `;
+      
+      drawChart(data, freq, type);
+    }
+    
+    function drawChart(data, freq, type){
+      const canvas = document.getElementById('chartCanvas');
+      const ctx = canvas.getContext('2d');
+      ctx.clearRect(0,0,canvas.width,canvas.height);
+      
+      if(type === 'grouped'){
+        const w = canvas.width - 60, h = canvas.height - 60;
+        const maxf = Math.max(...freq);
+        const barW = w / data.length * 0.8;
+        data.forEach((mid, i) => {
+          const barH = (freq[i] / maxf) * h;
+          ctx.fillStyle = '#4287f5';
+          const x = 50 + i * (w/data.length) + (w/data.length - barW)/2;
+          const y = canvas.height - 30 - barH;
+          ctx.fillRect(x, y, barW, barH);
+          ctx.fillStyle = '#000'; ctx.fillText(`${freq[i]}`, x + barW/2 - 5, y - 5);
+          ctx.fillText(`${mid}`, x + barW/2 - 10, canvas.height - 10);
+        });
+        ctx.strokeRect(50, 30, w, h);
+      } else {
+        ctx.fillStyle = 'blue';
+        data.forEach((x,i) => {
+          const xp = 300 + (x - data[0]) * 10;
+          const yp = 350 - freq[i]*20;
+          ctx.beginPath();
+          ctx.arc(xp, yp, 5, 0, 2*Math.PI);
+          ctx.fill();
+          ctx.fillText(`${x}`, xp - 5, yp - 10);
+        });
+        ctx.strokeRect(50, 50, 500, 300);
+      }
+    }
+  </script>
+</body>
+</html>
