@@ -1,0 +1,174 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="utf-8" />
+<meta name="viewport" content="width=device-width,initial-scale=1" />
+<title>Symmetric & Skew-Symmetric Matrix Checker</title>
+<style>
+  body{font-family:Arial,Helvetica,sans-serif;background:#f6f8fb;color:#0b1220;padding:18px}
+  .card{background:white;border-radius:10px;padding:12px;border:1px solid #e1e6ef;max-width:980px;margin:0 auto}
+  input[type=number]{width:70px;padding:6px;margin:4px;border-radius:6px;border:1px solid #ccd7ec}
+  button{padding:8px 12px;border-radius:8px;border:1px solid #7d9ad8;background:#3b6fc5;color:white;cursor:pointer}
+  button.ghost{background:transparent;color:#3b6fc5;border:1px solid #cfdff8}
+  label{font-weight:600;margin-right:8px}
+  canvas{border:1px solid #e1e6ef;margin-top:12px;border-radius:8px}
+  .mono{font-family:ui-monospace, SFMono-Regular, Menlo, Monaco, monospace}
+</style>
+</head>
+<body>
+  <div class="card">
+    <h2>Symmetric &amp; Skew-Symmetric Matrix App</h2>
+    <p>Enter a square matrix (2×2 up to 5×5). The app checks whether <code>A<sup>T</sup> = A</code> (symmetric) or <code>A<sup>T</sup> = -A</code> (skew-symmetric), and computes the symmetric part <code>(A + A<sup>T</sup>)/2</code> and skew-symmetric part <code>(A - A<sup>T</sup>)/2</code>.</p>
+
+    <div style="margin:10px 0">
+      <label for="n">Size</label>
+      <select id="n" onchange="buildInputs()">
+        <option value="2">2 × 2</option>
+        <option value="3" selected>3 × 3</option>
+        <option value="4">4 × 4</option>
+        <option value="5">5 × 5</option>
+      </select>
+      <button onclick="randomFill()">Random</button>
+      <button class="ghost" onclick="clearInputs()">Clear</button>
+      <button onclick="compute()">Compute</button>
+    </div>
+
+    <div id="matrixInputs" style="margin-top:8px"></div>
+
+    <div id="outputs" class="mono" style="margin-top:12px"></div>
+
+    <canvas id="viz" width="920" height="280"></canvas>
+  </div>
+
+<script>
+function buildInputs(){
+  const n = parseInt(document.getElementById('n').value,10);
+  const container = document.getElementById('matrixInputs');
+  container.innerHTML = '';
+  const table = document.createElement('div');
+  table.style.display = 'grid';
+  table.style.gridTemplateColumns = `repeat(${n}, auto)`;
+  table.style.gap = '6px';
+  for(let i=0;i<n;i++){
+    for(let j=0;j<n;j++){
+      const inp = document.createElement('input');
+      inp.type = 'number'; inp.step='any'; inp.value = (i===j?1:0);
+      inp.id = `a_${i}_${j}`;
+      table.appendChild(inp);
+    }
+  }
+  container.appendChild(table);
+  document.getElementById('outputs').innerHTML = '';
+  const ctx = document.getElementById('viz').getContext('2d'); ctx.clearRect(0,0,920,280);
+}
+
+function readMatrix(){
+  const n = parseInt(document.getElementById('n').value,10);
+  const A = Array.from({length:n}, ()=>Array(n).fill(0));
+  for(let i=0;i<n;i++){
+    for(let j=0;j<n;j++){
+      const v = parseFloat(document.getElementById(`a_${i}_${j}`).value);
+      A[i][j] = isNaN(v)?0:v;
+    }
+  }
+  return A;
+}
+
+function transpose(A){
+  const n = A.length; const T = Array.from({length:n}, ()=>Array(n).fill(0));
+  for(let i=0;i<n;i++) for(let j=0;j<n;j++) T[j][i]=A[i][j];
+  return T;
+}
+
+function add(A,B){
+  const n=A.length; const C=Array.from({length:n}, ()=>Array(n).fill(0));
+  for(let i=0;i<n;i++) for(let j=0;j<n;j++) C[i][j]=A[i][j]+B[i][j];
+  return C;
+}
+function sub(A,B){
+  const n=A.length; const C=Array.from({length:n}, ()=>Array(n).fill(0));
+  for(let i=0;i<n;i++) for(let j=0;j<n;j++) C[i][j]=A[i][j]-B[i][j];
+  return C;
+}
+function scale(A,s){
+  const n=A.length; const C=Array.from({length:n}, ()=>Array(n).fill(0));
+  for(let i=0;i<n;i++) for(let j=0;j<n;j++) C[i][j]=A[i][j]*s;
+  return C;
+}
+
+function eqMatrices(A,B){
+  const n=A.length; for(let i=0;i<n;i++) for(let j=0;j<n;j++) if(Math.abs(A[i][j]-B[i][j])>1e-9) return false; return true;
+}
+
+function fmtMatrix(A){
+  return '<table style="border-collapse:collapse">'+A.map(r=>'<tr>'+r.map(v=>`<td style="padding:4px 8px;border:1px solid #eef2f8">${round(v)}</td>`).join('')+'</tr>').join('')+'</table>';
+}
+function round(x){ return Math.abs(Math.round((x+Number.EPSILON)*1000000)/1000000) < 1e-9 ? 0 : (Math.round((x+Number.EPSILON)*1000000)/1000000); }
+
+function compute(){
+  const A = readMatrix();
+  const AT = transpose(A);
+  const sym = scale(add(A,AT), 0.5);
+  const skew = scale(sub(A,AT), 0.5);
+  const isSym = eqMatrices(AT, A);
+  const isSkew = eqMatrices(AT, scale(A,-1));
+
+  const out = document.getElementById('outputs');
+  out.innerHTML = '';
+  out.innerHTML += `<div><strong>A</strong><br>${fmtMatrix(A)}</div><br>`;
+  out.innerHTML += `<div><strong>A^T</strong><br>${fmtMatrix(AT)}</div><br>`;
+  out.innerHTML += `<div><strong>Symmetric part (A + A^T)/2</strong><br>${fmtMatrix(sym)}</div><br>`;
+  out.innerHTML += `<div><strong>Skew-symmetric part (A - A^T)/2</strong><br>${fmtMatrix(skew)}</div><br>`;
+  out.innerHTML += `<div><strong>Check:</strong> A^T = A ? <em>${isSym}</em> &nbsp; | &nbsp; A^T = -A ? <em>${isSkew}</em></div>`;
+
+  drawViz(A, AT, sym, skew);
+}
+
+function drawViz(A,AT,sym,skew){
+  const canvas = document.getElementById('viz'); const ctx = canvas.getContext('2d');
+  ctx.clearRect(0,0,canvas.width,canvas.height);
+  const n = A.length;
+  const boxSize = 120;
+  const gap = 18;
+  const startX = 12;
+  const startY = 12;
+  // Draw four matrices: A, A^T, symmetric, skew
+  const list = [{m:A,label:'A'},{m:AT,label:'A^T'},{m:sym,label:'(A+A^T)/2'},{m:skew,label:'(A-A^T)/2'}];
+  ctx.font='12px monospace'; ctx.fillStyle='#102030';
+  list.forEach((item, idx) => {
+    const x = startX + (idx%2)*(boxSize+gap+140);
+    const y = startY + Math.floor(idx/2)*(boxSize+gap+60);
+    drawMatrixBlock(ctx, item.m, x, y, 120, item.label);
+  });
+}
+
+function drawMatrixBlock(ctx, M, x, y, size, label){
+  const n = M.length; const cell = Math.floor(size / n);
+  ctx.strokeStyle='#cbd9f2'; ctx.lineWidth=1; ctx.strokeRect(x-6, y-18, cell*n+12, cell*n+30);
+  ctx.fillStyle='#102030'; ctx.fillText(label, x, y-4);
+  ctx.font = `${Math.max(10,cell-6)}px monospace`;
+  for(let i=0;i<n;i++){
+    for(let j=0;j<n;j++){
+      const tx = x + j*cell + 4;
+      const ty = y + i*cell + cell - 6;
+      ctx.fillText(round(M[i][j]).toString(), tx, ty);
+    }
+  }
+}
+
+function randomFill(){
+  const n=parseInt(document.getElementById('n').value,10);
+  for(let i=0;i<n;i++) for(let j=0;j<n;j++) document.getElementById(`a_${i}_${j}`).value = Math.floor(Math.random()*11)-5;
+}
+function clearInputs(){
+  const n=parseInt(document.getElementById('n').value,10);
+  for(let i=0;i<n;i++) for(let j=0;j<n;j++) document.getElementById(`a_${i}_${j}`).value = (i===j?1:0);
+  document.getElementById('outputs').innerHTML='';
+  const ctx=document.getElementById('viz').getContext('2d'); ctx.clearRect(0,0,920,280);
+}
+
+// init
+buildInputs();
+</script>
+</body>
+</html>
