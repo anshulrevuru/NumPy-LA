@@ -1,0 +1,239 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="utf-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1" />
+  <title>Matrix Inverse via adj(A)/det(A)</title>
+  <style>
+    :root { --bg:#0b1220; --card:#121a2a; --ink:#e8edf7; --muted:#9fb0d9; --accent:#61dafb; }
+    *{box-sizing:border-box}
+    body{margin:0; padding:24px; font-family:Inter,system-ui,Segoe UI,Arial,sans-serif; background:var(--bg); color:var(--ink)}
+    .app{max-width:1100px;margin:0 auto;display:grid;gap:16px}
+    .card{background:var(--card); border:1px solid #22304d; border-radius:16px; padding:16px; box-shadow:0 8px 24px rgba(0,0,0,.25)}
+    .row{display:flex; gap:12px; flex-wrap:wrap; align-items:center}
+    label{font-weight:600; font-size:14px}
+    input[type=number]{width:72px; padding:8px 10px; border-radius:10px; border:1px solid #2b3a5a; background:#0f1524; color:var(--ink)}
+    select,button{padding:10px 14px; border-radius:12px; border:1px solid #2b3a5a; background:#1a2440; color:var(--ink); cursor:pointer}
+    button:hover{background:#213057}
+    .grid{display:grid; grid-template-columns:1fr 1fr; gap:16px}
+    .muted{color:var(--muted)}
+    .mono{font-family:ui-monospace, SFMono-Regular, Menlo, Consolas, monospace}
+    table{border-collapse:collapse}
+    td{padding:2px 6px}
+    .badge{display:inline-block; padding:2px 8px; border-radius:999px; background:#0f1524; border:1px solid #2b3a5a; font-size:12px; margin-right:6px}
+  </style>
+</head>
+<body>
+  <div class="app">
+    <div class="card">
+      <h2 style="margin:0 0 6px">Inverse of a Matrix using <span class="mono">A<sup>-1</sup> = adj(A) / det(A)</span></h2>
+      <p class="muted" style="margin:0 0 12px">Supports 2×2 and 3×3 real matrices. Shows det(A), cofactor matrix, adj(A), and A<sup>-1</sup> if det(A) ≠ 0. Also draws matrices on a canvas.</p>
+      <div class="row" style="margin-bottom:8px">
+        <label for="size">Size</label>
+        <select id="size">
+          <option value="2">2 × 2</option>
+          <option value="3">3 × 3</option>
+        </select>
+        <button id="randomBtn">Random</button>
+        <button id="clearBtn">Clear</button>
+        <button id="computeBtn">Compute Inverse</button>
+        <span class="badge" id="status">Ready</span>
+      </div>
+      <div id="inputs" class="row"></div>
+    </div>
+
+    <div class="grid">
+      <div class="card">
+        <h3 style="margin:0 0 8px">Results</h3>
+        <div id="results" class="mono" style="font-size:14px; line-height:1.6"></div>
+      </div>
+      <div class="card">
+        <h3 style="margin:0 0 8px">Canvas View</h3>
+        <canvas id="canvas" width="520" height="360" style="width:100%; border-radius:12px; background:#0f1524; border:1px solid #22304d"></canvas>
+      </div>
+    </div>
+  </div>
+
+  <script>
+    const sizeEl = document.getElementById('size');
+    const inputsEl = document.getElementById('inputs');
+    const resultsEl = document.getElementById('results');
+    const statusEl = document.getElementById('status');
+    const canvas = document.getElementById('canvas');
+    const ctx = canvas.getContext('2d');
+
+    // --- UI builders ---
+    function buildInputs(n){
+      inputsEl.innerHTML = '';
+      const wrap = document.createElement('div');
+      wrap.style.display = 'grid';
+      wrap.style.gridTemplateColumns = `repeat(${n}, auto)`;
+      wrap.style.gap = '6px';
+      for(let r=0;r<n;r++){
+        for(let c=0;c<n;c++){
+          const inp = document.createElement('input');
+          inp.type = 'number';
+          inp.step = 'any';
+          inp.id = `a_${r}_${c}`;
+          inp.value = (r===c?1: (r+c===n-1?0:0));
+          wrap.appendChild(inp);
+        }
+      }
+      inputsEl.appendChild(wrap);
+    }
+
+    function readMatrix(n){
+      const A = Array.from({length:n}, ()=>Array(n).fill(0));
+      for(let r=0;r<n;r++){
+        for(let c=0;c<n;c++){
+          const v = parseFloat(document.getElementById(`a_${r}_${c}`).value);
+          A[r][c] = isNaN(v)?0:v;
+        }
+      }
+      return A;
+    }
+
+    // --- Math helpers ---
+    function det2(A){
+      return A[0][0]*A[1][1] - A[0][1]*A[1][0];
+    }
+    function det3(A){
+      const [a,b,c] = A[0];
+      const [d,e,f] = A[1];
+      const [g,h,i] = A[2];
+      return a*(e*i - f*h) - b*(d*i - f*g) + c*(d*h - e*g);
+    }
+    function minor(A, r, c){
+      const n = A.length;
+      const M = [];
+      for(let i=0;i<n;i++) if(i!==r){
+        const row = [];
+        for(let j=0;j<n;j++) if(j!==c) row.push(A[i][j]);
+        M.push(row);
+      }
+      return M;
+    }
+    function cofactorMatrix(A){
+      const n = A.length;
+      const C = Array.from({length:n}, ()=>Array(n).fill(0));
+      for(let r=0;r<n;r++){
+        for(let c=0;c<n;c++){
+          const M = minor(A, r, c);
+          const detM = (n===2? det2([[A[1-r][1-c]]] ): (M.length===1? M[0][0] : (M.length===2? det2(M) : det3(M))));
+          const sign = ((r+c)%2===0)? 1 : -1;
+          C[r][c] = sign * detM;
+        }
+      }
+      return C;
+    }
+    function transpose(A){
+      const n = A.length; const m = A[0].length;
+      const T = Array.from({length:m}, ()=>Array(n).fill(0));
+      for(let r=0;r<n;r++) for(let c=0;c<m;c++) T[c][r]=A[r][c];
+      return T;
+    }
+    function multiplyScalar(A, s){
+      return A.map(row => row.map(v => v*s));
+    }
+    function determinant(A){
+      if(A.length===2) return det2(A);
+      if(A.length===3) return det3(A);
+      throw new Error('Only 2x2 or 3x3 supported');
+    }
+
+    // Pretty printers
+    function fmt(x){
+      const v = Number(x);
+      if(!isFinite(v)) return String(v);
+      const r = Math.round(v*1e8)/1e8; // avoid -0
+      return Math.abs(r) < 1e-9 ? '0' : (Math.abs(r) >= 1e6 ? r.toExponential(4) : r.toString());
+    }
+    function matrixHTML(M, title){
+      let h = title ? `<div><strong>${title}</strong></div>` : '';
+      h += '<table>' + M.map(row=> '<tr>' + row.map(v=>`<td>${fmt(v)}</td>`).join('') + '</tr>').join('') + '</table>';
+      return h;
+    }
+
+    // Canvas rendering
+    function drawMatrixOnCanvas(A, label, x, y){
+      const n = A.length; const m = A[0].length;
+      const cell = 48; const pad=8;
+      // brackets
+      ctx.strokeStyle = '#2b3a5a'; ctx.lineWidth = 2;
+      ctx.beginPath();
+      ctx.moveTo(x, y); ctx.lineTo(x, y + n*cell);
+      ctx.moveTo(x + m*cell + 2*pad, y); ctx.lineTo(x + m*cell + 2*pad, y + n*cell);
+      ctx.stroke();
+      // cells
+      ctx.font = '14px ui-monospace, Menlo, monospace';
+      ctx.fillStyle = '#e8edf7';
+      for(let r=0;r<n;r++){
+        for(let c=0;c<m;c++){
+          const vx = x + pad + c*cell;
+          const vy = y + (r+0.65)*cell;
+          ctx.fillText(fmt(A[r][c]), vx, vy);
+        }
+      }
+      if(label){
+        ctx.fillStyle = '#9fb0d9';
+        ctx.fillText(label, x, y - 8);
+      }
+    }
+
+    function compute(){
+      try{
+        const n = parseInt(sizeEl.value,10);
+        const A = readMatrix(n);
+        const detA = determinant(A);
+        const C = (n===2) ? [
+          [ A[1][1], -A[0][1] ],
+          [ -A[1][0], A[0][0] ]
+        ] : cofactorMatrix(A);
+        const adjA = transpose(C);
+        const invA = (Math.abs(detA) < 1e-12) ? null : multiplyScalar(adjA, 1/detA);
+
+        // Results HTML
+        let html = '';
+        html += matrixHTML(A, 'A');
+        html += `<div style="margin:8px 0"><strong>det(A)</strong> = <code>${fmt(detA)}</code></div>`;
+        html += matrixHTML(C, 'Cofactor matrix C = cof(A)');
+        html += matrixHTML(adjA, 'adj(A) = transpose(C)');
+        if(invA){
+          html += `<div style="margin:8px 0"><span class="badge">A<sup>-1</sup> = adj(A) / det(A)</span></div>`;
+          html += matrixHTML(invA, 'A⁻¹');
+          statusEl.textContent = 'Invertible (det ≠ 0)';
+        } else {
+          html += `<div style="margin:8px 0; color:#ffb4b4"><strong>Not invertible:</strong> det(A) = 0</div>`;
+          statusEl.textContent = 'Singular (det = 0)';
+        }
+        resultsEl.innerHTML = html;
+
+        // Canvas drawing
+        ctx.clearRect(0,0,canvas.width,canvas.height);
+        drawMatrixOnCanvas(A, 'A', 24, 56);
+        drawMatrixOnCanvas(adjA, 'adj(A)', 24 + 240, 56);
+        if(invA) drawMatrixOnCanvas(invA, 'A^{-1}', 24, 210);
+
+      } catch(err){
+        statusEl.textContent = 'Error';
+        resultsEl.textContent = err.message;
+      }
+    }
+
+    // Events
+    sizeEl.addEventListener('change', () => { buildInputs(parseInt(sizeEl.value,10)); resultsEl.innerHTML=''; ctx.clearRect(0,0,canvas.width,canvas.height); });
+    document.getElementById('computeBtn').addEventListener('click', compute);
+    document.getElementById('clearBtn').addEventListener('click', () => { buildInputs(parseInt(sizeEl.value,10)); resultsEl.innerHTML=''; ctx.clearRect(0,0,canvas.width,canvas.height); });
+    document.getElementById('randomBtn').addEventListener('click', () => {
+      const n = parseInt(sizeEl.value,10);
+      for(let r=0;r<n;r++)for(let c=0;c<n;c++){
+        const el = document.getElementById(`a_${r}_${c}`);
+        el.value = (Math.random()*6 - 3).toFixed(0); // integers in [-3,3]
+      }
+    });
+
+    // Init
+    buildInputs(parseInt(sizeEl.value,10));
+  </script>
+</body>
+</html>
